@@ -1,0 +1,238 @@
+你是一名资深 Rust + WebAssembly 系统工程师，同时具备浏览器自动化与 LLM Agent 架构经验。
+
+你的任务是实现一个完整的 Web Agent IR 编译器，支持：
+
+HTML → IR → Token DSL → Action → DOM 反向定位执行
+
+该系统运行在 WASM 中，用于将网页压缩为可供 LLM 推理的最小语义表示，并能够可靠地映射回 DOM 元素执行操作。
+
+---
+
+# 🎯 项目目标
+
+实现一个 Rust + WASM 模块，具备以下能力：
+
+1. 输入：HTML 字符串 或 DOM snapshot（JSON）
+2. 输出：Token DSL（带元素定位信息）
+3. 支持 LLM 输出 action 后，能精准定位 DOM 元素
+4. 支持 fallback 定位机制（多层）
+
+---
+
+# 📥 输入示例（HTML）
+
+```html
+<div>
+  <button>登录</button>
+  <input placeholder="用户名" />
+</div>
+```
+
+---
+
+# 📤 输出示例（Token DSL）
+
+```text
+BTN(login)#12
+INP(username)#13
+```
+
+说明：
+
+* #12 表示 DOM queryselector id（必须可回溯）
+可以对应的生成查找表
+---
+
+# 🧠 编译流水线（必须实现）
+
+---
+
+## Stage 1：HTML 解析
+
+* 解析 HTML 为 DOM
+* 忽略 script / style
+* 过滤不可见节点
+
+---
+
+## Stage 2：DOM → IR（必须扩展 anchor）
+
+定义 IR：
+
+```rust
+pub struct NodeIR {
+    pub id: u32,
+
+    // 语义
+    pub kind: NodeKind,
+    pub text: String,
+
+    // ⚠️ 关键：反向定位信息
+    pub dom_id: Option<String>,   // data-agent-id
+    pub selector: Option<String>, // fallback
+    pub bbox: Option<(f32, f32)>, // 位置 fallback
+}
+```
+
+要求：
+
+* 每个节点必须绑定 DOM queryselector id
+
+---
+
+## Stage 3：语义标准化
+
+规则：
+
+* 登录 → login
+* 用户名 → username
+* 搜索 → search
+* 提交 → submit
+
+---
+
+## Stage 4：Token DSL 生成（必须带 anchor）
+
+```text
+BTN(login)#12
+INP(username)#13
+```
+
+或 ultra 模式：
+
+```text
+B12=login I13=user
+```
+
+---
+
+# ⚙️ Token 优化策略
+
+* 删除无用节点
+* 扁平化结构
+* 类型缩写（B / I / T / L）
+* 支持 token budget
+
+---
+
+# 🔁 Action 执行模型（必须实现设计）
+
+LLM 输出：
+
+```json
+{ "action": "click", "id": 12 }
+```
+
+---
+
+# 🌐 DOM 反向定位机制（核心要求）
+
+必须实现三层定位策略：
+
+---
+
+## Layer 1：强定位（Primary）
+
+```js
+document.querySelector('[data-agent-id="12"]')
+```
+
+---
+
+## Layer 2：结构 fallback（Secondary）
+
+使用 selector：
+
+```js
+document.querySelector(selector)
+```
+
+---
+
+## Layer 3：语义 fallback（Tertiary）
+
+```js
+[...document.querySelectorAll("button")]
+  .find(el => el.innerText.includes("登录"))
+```
+
+---
+
+# ⚠️ 重要约束
+
+* LLM 不允许输出 selector
+* LLM 只能输出 id
+* 所有 selector 必须由系统生成
+
+---
+
+# 🧠 Anchor 稳定性增强（必须设计）
+
+为每个节点生成稳定锚点：
+
+```text
+anchor = hash(text + tag + position)
+```
+
+用于 DOM 变化时恢复定位
+
+---
+
+# 🌐 WASM 接口
+
+```rust
+#[wasm_bindgen]
+pub fn compress_html(html: String) -> String;
+```
+
+扩展：
+
+```rust
+pub fn build_ir(html: String) -> JsValue;
+pub fn compress_ir(ir: JsValue) -> String;
+```
+
+---
+
+# ⚡ 性能要求
+
+* 支持 WASM
+* deterministic
+* 100 节点 < 2ms
+* 避免 clone
+
+---
+
+# 🧪 示例
+
+输入：
+
+```json
+[
+  { "id": 12, "type": "button", "text": "登录" }
+]
+```
+
+输出：
+
+```text
+BTN(login)#12
+```
+
+---
+
+# 🚫 限制
+
+* 不依赖浏览器 API（WASM 内）
+* DOM 操作必须由 JS 层完成
+* Rust 只负责 IR + 压缩 + anchor
+
+---
+
+# 📦 输出要求
+
+仅输出：
+
+* Rust 源代码
+* wasm-bindgen 绑定
+* 不要解释

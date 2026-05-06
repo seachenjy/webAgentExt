@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; }
+    body { padding: 12px; font-family: system-ui, sans-serif; font-size: 13px; margin: 0; min-width: 320px; }
+    h3 { margin: 0 0 8px; font-size: 15px; }
+    .btn { padding: 6px 12px; margin: 4px 4px 4px 0; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #e5e7eb; color: #333; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .stats { margin-top: 8px; color: #666; font-size: 11px; }
+    select, input, textarea { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; font-family: inherit; width: 100%; }
+    textarea { resize: vertical; }
+    .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .row > * { flex-shrink: 0; }
+    .row select, .row input { width: auto; flex-grow: 1; }
+    .section { margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+    .section-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; cursor: pointer; user-select: none; }
+    .section-title::before { content: '▶ '; font-size: 10px; }
+    .section-title.open::before { content: '▼ '; }
+    .section-body { display: none; }
+    .section-body.open { display: block; }
+    .success { color: #16a34a; }
+    .error { color: #dc2626; }
+    .muted { color: #9ca3af; }
+    .step { padding: 4px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; font-family: monospace; }
+    .step-num { color: #6366f1; font-weight: 600; }
+    .action-result { margin-top: 6px; font-size: 12px; }
+    .action-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .action-row > * { margin-bottom: 4px; }
+    #output { margin-top: 10px; background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+    #agent-log { background: #1e1e1e; color: #d4d4d4; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 11px; max-height: 300px; overflow-y: auto; min-height: 60px; }
+    #agent-log .step { color: #d4d4d4; border-bottom-color: #333; }
+    #agent-log .step-action { color: #60a5fa; }
+    #agent-log .step-result { color: #34d399; }
+    #agent-log .step-error { color: #f87171; }
+    #agent-log .step-info { color: #fbbf24; }
+    .settings-grid { display: grid; gap: 6px; }
+    .settings-grid label { font-size: 12px; color: #374151; }
+    .settings-grid input { width: 100%; }
+    .inline-label { font-size: 12px; white-space: nowrap; }
+    .progress-bar { height: 3px; background: #e5e7eb; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #2563eb; transition: width 0.3s; width: 0; }
+  </style>
+</head>
+<body>
+  <h3>Web Agent</h3>
+
+  <div class="section">
+    <div class="section-title open" data-toggle="settings-body">API 设置</div>
+    <div class="section-body open" id="settings-body">
+      <div class="settings-grid">
+        <label>API Base URL</label>
+        <input id="api-base" type="text" placeholder="https://api.openai.com/v1">
+        <label>API Key</label>
+        <input id="api-key" type="password" placeholder="sk-...">
+        <label>Model</label>
+        <input id="api-model" type="text" placeholder="gpt-4o">
+        <div class="row" style="margin-top:4px">
+          <button class="btn btn-secondary" id="btn-save-settings">保存设置</button>
+          <span id="settings-status" class="muted"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title open" data-toggle="agent-body">Agent 任务</div>
+    <div class="section-body open" id="agent-body">
+      <div class="row">
+        <select id="mode">
+          <option value="normal">Normal</option>
+          <option value="ultra">Ultra</option>
+        </select>
+        <span class="inline-label">Max Steps:</span>
+        <input id="max-steps" type="number" value="10" style="width:50px">
+      </div>
+      <textarea id="task-input" rows="2" placeholder="输入任务，例如：点击登录按钮，在用户名输入框中输入 admin"></textarea>
+      <div class="row">
+        <button class="btn btn-primary" id="btn-run-agent">▶ 运行 Agent</button>
+        <button class="btn btn-danger" id="btn-stop-agent" disabled>■ 停止</button>
+      </div>
+      <div class="progress-bar"><div class="progress-bar-fill" id="agent-progress"></div></div>
+      <div id="agent-log">等待运行...</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title" data-toggle="manual-body">手动测试</div>
+    <div class="section-body" id="manual-body">
+      <div class="row">
+        <label>预算:</label>
+        <input id="budget" type="number" placeholder="无限制" style="width:80px">
+      </div>
+      <div class="row" style="flex-wrap: wrap;">
+        <button class="btn btn-primary" id="btn-compress">压缩页面</button>
+        <button class="btn btn-secondary" id="btn-ir">生成 IR</button>
+        <button class="btn btn-secondary" id="btn-copy">复制</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div id="output">点击按钮开始测试...</div>
+
+      <div style="margin-top:8px">
+        <div class="action-row">
+          <select id="action-type" style="width: 80px;">
+            <option value="click">click</option>
+            <option value="type">type</option>
+            <option value="select">select</option>
+            <option value="hover">hover</option>
+            <option value="scroll">scroll</option>
+          </select>
+          <input id="action-id" type="number" placeholder="ID" style="width:60px">
+          <input id="action-value" type="text" placeholder="value" style="width:100px; flex-grow: 1;">
+          <button class="btn btn-danger" id="btn-execute">执行</button>
+        </div>
+        <div class="action-result" id="action-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidebar.js" type="module"></script>
+</body>
+</html>

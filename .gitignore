@@ -141,3 +141,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# WebAssembly (wasm-pack)
+/pkg/
+/extension/wasm/web_agent_ir.js
+/extension/wasm/web_agent_ir_bg.wasm
