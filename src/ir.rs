@@ -27,6 +27,26 @@ fn build_selector(node: &ParsedNode, id: u32) -> String {
     if let Some(placeholder) = node.get_attr("placeholder") {
         return format!("{}[placeholder=\"{}\"]", node.tag, placeholder);
     }
+    if let Some(href) = node.get_attr("href") {
+        if node.tag == "a" && !href.is_empty() {
+            return format!("a[href=\"{}\"]", href);
+        }
+    }
+    if let Some(role) = node.get_attr("role") {
+        if !role.is_empty() {
+            return format!("[role=\"{}\"]", role);
+        }
+    }
+    if let Some(input_type) = node.get_attr("type") {
+        if node.tag == "input" {
+            return format!("input[type=\"{}\"]", input_type);
+        }
+    }
+    if let Some(aria_label) = node.get_attr("aria-label") {
+        if !aria_label.is_empty() {
+            return format!("[aria-label=\"{}\"]", aria_label);
+        }
+    }
     format!("[data-agent-id=\"{}\"]", id)
 }
 

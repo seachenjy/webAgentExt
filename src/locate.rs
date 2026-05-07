@@ -16,10 +16,10 @@ pub fn resolve_location(action: &AgentAction, ir: &[NodeIR]) -> LocateStrategy {
 
     match node {
         Some(n) => {
-            if n.dom_id.is_some() || n.selector.starts_with("[data-agent-id=") {
-                LocateStrategy::AgentId(n.id)
-            } else if !n.selector.is_empty() {
+            if !n.selector.is_empty() && !n.selector.starts_with("[data-agent-id=") {
                 LocateStrategy::Selector(n.selector.clone())
+            } else if n.selector.starts_with("[data-agent-id=") {
+                LocateStrategy::AgentId(n.id)
             } else {
                 LocateStrategy::SemanticText {
                     text: n.text.clone(),
