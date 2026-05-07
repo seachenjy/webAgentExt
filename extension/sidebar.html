@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #1f2937; background: #f9fafb; min-width: 360px; display: flex; flex-direction: column; height: 100vh; }
+    body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #1f2937; background: #f9fafb; min-width: 360px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
     
-    .tabs { display: flex; background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; z-index: 10; }
     .tab { flex: 1; padding: 10px 4px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 500; color: #6b7280; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; }
     .tab:hover { color: #2563eb; background: #f0f5ff; }
     .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
     
     .panel { display: none; flex: 1; overflow-y: auto; padding: 12px; }
     .panel.active { display: flex; flex-direction: column; }
+    .panel-editor { padding: 0; overflow: hidden; position: relative; }
     
     .btn { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: opacity 0.15s; }
     .btn:hover { opacity: 0.85; }
@@ -23,6 +24,7 @@
     .btn-warning { background: #f59e0b; color: #fff; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-sm { padding: 3px 8px; font-size: 11px; }
+    .btn-xs { padding: 2px 6px; font-size: 10px; }
     .btn-block { width: 100%; }
     
     input, select, textarea { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; font-family: inherit; width: 100%; }
@@ -46,25 +48,6 @@
     .task-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
     .task-meta { font-size: 11px; color: #6b7280; }
     .task-actions { display: flex; gap: 4px; margin-top: 6px; }
-    
-    .node-list { display: flex; flex-direction: column; gap: 6px; }
-    .node-item { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; cursor: grab; transition: all 0.15s; }
-    .node-item:active { cursor: grabbing; }
-    .node-item.dragging { opacity: 0.4; border-style: dashed; }
-    .node-item.drag-over { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
-    .node-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; flex-shrink: 0; }
-    .node-badge.navigate { background: #6366f1; }
-    .node-badge.summarize { background: #8b5cf6; }
-    .node-badge.action { background: #2563eb; }
-    .node-badge.agent_loop { background: #0891b2; }
-    .node-badge.export_data { background: #16a34a; }
-    .node-badge.wait { background: #f59e0b; }
-    .node-badge.log { background: #6b7280; }
-    .node-info { flex: 1; min-width: 0; }
-    .node-title { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .node-desc { font-size: 11px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .node-actions { display: flex; gap: 2px; flex-shrink: 0; }
-    .drag-handle { color: #d1d5db; cursor: grab; font-size: 16px; flex-shrink: 0; user-select: none; }
     
     .log-area { background: #1e1e1e; color: #d4d4d4; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 11px; overflow-y: auto; flex: 1; min-height: 100px; }
     .log-line { padding: 2px 0; border-bottom: 1px solid #2d2d2d; }
@@ -98,12 +81,66 @@
     
     .toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
     .toolbar-title { font-weight: 600; font-size: 14px; flex: 1; }
+
+    .editor-toolbar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(255,255,255,0.92); border-bottom: 1px solid #e5e7eb; z-index: 5; backdrop-filter: blur(4px); }
+    .editor-toolbar .toolbar-title { font-size: 13px; }
     
-    .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
-    .status-dot.running { background: #2563eb; animation: pulse 1s infinite; }
-    .status-dot.success { background: #16a34a; }
-    .status-dot.error { background: #dc2626; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .graph-canvas { position: absolute; inset: 40px 0 0 0; overflow: hidden; background: #f3f4f6; cursor: grab; }
+    .graph-canvas:active { cursor: grabbing; }
+    .graph-canvas.connecting { cursor: crosshair; }
+    
+    .graph-inner { position: absolute; top: 0; left: 0; width: 4000px; height: 4000px; transform-origin: 0 0; }
+    
+    .graph-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px); background-size: 20px 20px; pointer-events: none; }
+    
+    .graph-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .graph-svg path { pointer-events: stroke; cursor: pointer; }
+    .graph-svg path.edge-line { fill: none; stroke: #9ca3af; stroke-width: 2; }
+    .graph-svg path.edge-line:hover { stroke: #dc2626; stroke-width: 3; }
+    .graph-svg path.edge-active { stroke: #2563eb; stroke-width: 2.5; }
+    .graph-svg path.edge-temp { fill: none; stroke: #2563eb; stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+    
+    .gn { position: absolute; min-width: 160px; background: #fff; border: 2px solid #e5e7eb; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: move; user-select: none; transition: box-shadow 0.15s; z-index: 2; }
+    .gn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .gn.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
+    .gn.running { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+    .gn.done { border-color: #16a34a; }
+    .gn.error { border-color: #dc2626; }
+    
+    .gn-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px 6px 0 0; cursor: move; }
+    .gn-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
+    .gn-badge.navigate { background: #6366f1; }
+    .gn-badge.summarize { background: #8b5cf6; }
+    .gn-badge.action { background: #2563eb; }
+    .gn-badge.agent_loop { background: #0891b2; }
+    .gn-badge.export_data { background: #16a34a; }
+    .gn-badge.wait { background: #f59e0b; }
+    .gn-badge.log { background: #6b7280; }
+    .gn-label { font-size: 11px; font-weight: 600; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .gn-delete { width: 16px; height: 16px; border-radius: 50%; border: none; background: #ef4444; color: #fff; font-size: 10px; line-height: 16px; text-align: center; cursor: pointer; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; padding: 0; }
+    .gn:hover .gn-delete { opacity: 1; }
+    
+    .gn-body { padding: 4px 10px 6px; font-size: 11px; color: #6b7280; border-top: 1px solid #f3f4f6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    .gn-port { position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #9ca3af; background: #fff; cursor: crosshair; z-index: 3; transition: all 0.15s; }
+    .gn-port:hover { transform: scale(1.4); border-color: #2563eb; background: #dbeafe; }
+    .gn-port.input { left: -6px; top: 50%; transform: translateY(-50%); }
+    .gn-port.input:hover { transform: translateY(-50%) scale(1.4); }
+    .gn-port.output { right: -6px; top: 50%; transform: translateY(-50%); }
+    .gn-port.output:hover { transform: translateY(-50%) scale(1.4); }
+    .gn-port.connected { background: #2563eb; border-color: #2563eb; }
+    
+    .palette { position: absolute; top: 44px; right: 6px; background: rgba(255,255,255,0.95); border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; z-index: 4; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); backdrop-filter: blur(4px); max-height: calc(100% - 50px); overflow-y: auto; }
+    .palette-btn { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 5px; background: #fff; cursor: pointer; font-size: 11px; color: #374151; transition: all 0.15s; white-space: nowrap; }
+    .palette-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+    .palette-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .palette-dot.navigate { background: #6366f1; }
+    .palette-dot.summarize { background: #8b5cf6; }
+    .palette-dot.action { background: #2563eb; }
+    .palette-dot.agent_loop { background: #0891b2; }
+    .palette-dot.export_data { background: #16a34a; }
+    .palette-dot.wait { background: #f59e0b; }
+    .palette-dot.log { background: #6b7280; }
   </style>
 </head>
 <body>
@@ -123,25 +160,20 @@
     <div id="task-list"></div>
   </div>
 
-  <div class="panel" id="panel-editor">
-    <div class="toolbar">
+  <div class="panel panel-editor" id="panel-editor">
+    <div class="editor-toolbar">
       <span class="toolbar-title" id="editor-title">选择任务</span>
-      <button class="btn btn-secondary btn-sm" id="btn-add-node">+ 节点</button>
+      <button class="btn btn-secondary btn-sm" id="btn-fit-view">适应视图</button>
+      <button class="btn btn-secondary btn-sm" id="btn-auto-layout">自动布局</button>
       <button class="btn btn-primary btn-sm" id="btn-save-flow">保存</button>
     </div>
-    <div class="field">
-      <label>任务名称</label>
-      <input id="flow-name" type="text" placeholder="输入任务名称...">
+    <div class="graph-canvas" id="graph-canvas">
+      <div class="graph-inner" id="graph-inner">
+        <div class="graph-grid"></div>
+        <svg class="graph-svg" id="graph-svg"></svg>
+      </div>
     </div>
-    <div class="field">
-      <label>重复次数</label>
-      <input id="flow-repeat" type="number" value="1" min="1" style="width:80px">
-    </div>
-    <div id="node-list" class="node-list"></div>
-    <div id="node-empty" class="empty-state" style="display:none">
-      <div class="empty-state-icon">⚡</div>
-      <div class="empty-state-text">点击上方「+ 节点」添加功能节点</div>
-    </div>
+    <div class="palette" id="palette"></div>
   </div>
 
   <div class="panel" id="panel-run">
@@ -162,36 +194,15 @@
   <div class="panel" id="panel-settings">
     <div class="settings-section">
       <div class="settings-section-title">API 配置</div>
-      <div class="field">
-        <label>API Base URL</label>
-        <input id="set-api-base" type="text" placeholder="https://api.openai.com/v1">
-      </div>
-      <div class="field">
-        <label>API Key</label>
-        <input id="set-api-key" type="password" placeholder="sk-...">
-      </div>
-      <div class="field">
-        <label>Model</label>
-        <input id="set-api-model" type="text" placeholder="gpt-4o">
-      </div>
+      <div class="field"><label>API Base URL</label><input id="set-api-base" type="text" placeholder="https://api.openai.com/v1"></div>
+      <div class="field"><label>API Key</label><input id="set-api-key" type="password" placeholder="sk-..."></div>
+      <div class="field"><label>Model</label><input id="set-api-model" type="text" placeholder="gpt-4o"></div>
     </div>
     <div class="settings-section">
       <div class="settings-section-title">执行配置</div>
-      <div class="field">
-        <label>Token 模式</label>
-        <select id="set-mode">
-          <option value="normal">Normal</option>
-          <option value="ultra">Ultra</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Agent 最大步数</label>
-        <input id="set-max-steps" type="number" value="10" min="1" max="100">
-      </div>
-      <div class="field">
-        <label>Token 预算 (留空无限制)</label>
-        <input id="set-budget" type="number" placeholder="无限制" min="100">
-      </div>
+      <div class="field"><label>Token 模式</label><select id="set-mode"><option value="normal">Normal</option><option value="ultra">Ultra</option></select></div>
+      <div class="field"><label>Agent 最大步数</label><input id="set-max-steps" type="number" value="10" min="1" max="100"></div>
+      <div class="field"><label>Token 预算 (留空无限制)</label><input id="set-budget" type="number" placeholder="无限制" min="100"></div>
     </div>
     <div class="settings-section">
       <div class="settings-section-title">数据管理</div>
@@ -207,19 +218,7 @@
 
   <div class="modal-overlay" id="modal-node">
     <div class="modal">
-      <div class="modal-title" id="modal-node-title">添加节点</div>
-      <div class="field">
-        <label>节点类型</label>
-        <select id="node-type">
-          <option value="navigate">🌐 导航 (navigate)</option>
-          <option value="summarize">📝 总结 (summarize)</option>
-          <option value="action">🖱 操作 (action)</option>
-          <option value="agent_loop">🤖 Agent循环 (agent_loop)</option>
-          <option value="export_data">📦 导出数据 (export_data)</option>
-          <option value="wait">⏱ 等待 (wait)</option>
-          <option value="log">📋 日志 (log)</option>
-        </select>
-      </div>
+      <div class="modal-title" id="modal-node-title">节点属性</div>
       <div id="node-params"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-modal-cancel">取消</button>
@@ -243,7 +242,6 @@
   </div>
 
   <input type="file" id="file-import" accept=".json" style="display:none">
-
   <script src="sidebar.js" type="module"></script>
 </body>
 </html>
