@@ -12,7 +12,14 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Web Agent IR"
+    "default_title": "Open Web Agent IR",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"

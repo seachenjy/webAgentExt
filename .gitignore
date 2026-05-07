@@ -151,3 +151,7 @@ Cargo.lock
 /pkg/
 /extension/wasm/web_agent_ir.js
 /extension/wasm/web_agent_ir_bg.wasm
+
+# Build artifacts
+/dist/
+/*.zip
